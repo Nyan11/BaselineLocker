@@ -1,5 +1,5 @@
 Class {
-	#name : 'BaselineLockerModel',
+	#name : 'BaselineLockerDiffModel',
 	#superclass : 'Object',
 	#instVars : [
 		'baseline',
@@ -12,7 +12,7 @@ Class {
 }
 
 { #category : 'initialization' }
-BaselineLockerModel >> addLoads: anObject fromSource: aBaseline [
+BaselineLockerDiffModel >> addLoads: anObject fromSource: aBaseline [
 
 	loads
 		at: anObject
@@ -21,31 +21,34 @@ BaselineLockerModel >> addLoads: anObject fromSource: aBaseline [
 ]
 
 { #category : 'initialization' }
-BaselineLockerModel >> addRepositories: anObject fromSource: aBaseline [
+BaselineLockerDiffModel >> addRepositories: anObject fromSource: aBaseline [
 
-	repositories at: anObject ifPresent: [ :col | col add: aBaseline ] ifAbsentPut: [ OrderedCollection with: aBaseline ].
+	repositories
+		at: anObject
+		ifPresent: [ :repositoryLModel | repositoryLModel addBaseline: aBaseline ]
+		ifAbsentPut: [ BaselineLockerRepositoryModel new repository: anObject; addBaseline: aBaseline; yourself ]
 ]
 
 { #category : 'initialization' }
-BaselineLockerModel >> addSource: anObject [
+BaselineLockerDiffModel >> addSource: anObject [
 
 	sources add: anObject
 ]
 
 { #category : 'accessing' }
-BaselineLockerModel >> baseline [
+BaselineLockerDiffModel >> baseline [
 
 	^ baseline
 ]
 
 { #category : 'accessing' }
-BaselineLockerModel >> baseline: anObject [
+BaselineLockerDiffModel >> baseline: anObject [
 
 	baseline := anObject
 ]
 
 { #category : 'initialization' }
-BaselineLockerModel >> initialize [
+BaselineLockerDiffModel >> initialize [
 
 	super initialize.
 	sources := OrderedCollection new.
@@ -54,19 +57,19 @@ BaselineLockerModel >> initialize [
 ]
 
 { #category : 'accessing' }
-BaselineLockerModel >> loads [
+BaselineLockerDiffModel >> loads [
 
 	^ loads
 ]
 
 { #category : 'accessing' }
-BaselineLockerModel >> repositories [
+BaselineLockerDiffModel >> repositories [
 
 	^ repositories
 ]
 
 { #category : 'accessing' }
-BaselineLockerModel >> sources [
+BaselineLockerDiffModel >> sources [
 
 	^ sources
 ]

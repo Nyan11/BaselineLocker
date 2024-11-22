@@ -68,7 +68,7 @@ BaselineLocker >> computeDependenciesFrom: aCollectionOfBaselines [
 							                        string asSymbol ] ].
 				dependenciesModels := dependenciesProjects collect: [ :dependency |
 					                      | model |
-					                      model := BaselineLockerModel new.
+					                      model := BaselineLockerDiffModel new.
 					                      model addSource: target.
 					                      model baseline:
 						                      (Smalltalk globals at:
@@ -87,9 +87,10 @@ BaselineLocker >> computeDependenciesFrom: aCollectionOfBaselines [
 						at: each baseline
 						ifPresent: [ :model |
 							model addSource: target.
-							each repositories keys do: [ :repo | model addRepositories: repo fromSource: target ].
-							each loads keys do: [ :repo | model addLoads: repo fromSource: target ]
-							]
+							each repositories keys do: [ :repo |
+								model addRepositories: repo fromSource: target ].
+							each loads keys do: [ :repo |
+								model addLoads: repo fromSource: target ] ]
 						ifAbsentPut: each ].
 				foundBaselines
 					at: target
@@ -118,9 +119,14 @@ BaselineLocker >> computeDependenciesFrom: aCollectionOfBaselines [
 
 	self dependencies: (orderedBaselines collect: [ :each |
 			 modelDictionary at: each ifAbsentPut: [
-				 BaselineLockerModel new
+				 BaselineLockerDiffModel new
 					 baseline: each;
 					 yourself ] ])
+]
+
+{ #category : 'as yet unclassified' }
+BaselineLocker >> computeLicences [
+	dependenciesTable items do: [ :each | each repositories values do: #updateLicence ].
 ]
 
 { #category : 'copying' }
@@ -155,9 +161,11 @@ BaselineLocker >> copyCurrent [
 					              expandMacros ].
 		each repositories keysAndValuesDo: [ :key :value |
 			| newRepoLine |
-			newRepoLine := '<t>spec repository: <1p>. "<2s>"<r>'
+			newRepoLine := '<t>spec repository: <1p>. "<2s> -> (<3s>)"<r>'
 				               expandMacrosWith: key
-				               with: (Character space join: value).
+				 				   with: (value licenceShorter)
+				               with: (Character space join: value baselines)
+								  .
 			insideBloc := insideBloc , newRepoLine ].
 		each sources isEmpty ifTrue: [
 			text := text
@@ -243,27 +251,42 @@ BaselineLocker >> initializePresenters [
 								                      dependenciesTable selectedItem inspect ] ] ]);
 		                     yourself.
 	dependenciesTable addColumn: (SpStringTableColumn new
-			 title: 'Sources';
+			 title: '#';
 			 evaluated: [ :model | model sources size printString ];
+			 width: 16;
 			 yourself).
 	dependenciesTable addColumn: (SpStringTableColumn new
 			 title: 'Name';
 			 evaluated: [ :model | model baseline printString ];
 			 yourself).
 	dependenciesTable addColumn: (SpStringTableColumn new
-			 title: 'Repositories';
-			 evaluated: [ :model |
-				 model repositories ifEmpty: [ '' ] ifNotEmpty: [ :rep | rep size = 1 ifTrue: [ rep keys first ] ifFalse: [ 'Conflicts' ] ] ];
-			 yourself).
-	dependenciesTable addColumn: (SpStringTableColumn new
 			 title: 'Loads';
 			 evaluated: [ :model |
-				 model loads ifEmpty: [ '' ] ifNotEmpty: [ :loads | loads size = 1 ifTrue: [ loads keys first ] ifFalse: [ 'Conflicts' ] ] ];
+				 model loads ifEmpty: [ '' ] ifNotEmpty: [ :loads |
+						 loads size = 1
+							 ifTrue: [ loads keys first ]
+							 ifFalse: [ 'Conflicts' ] ] ];
+			 yourself).
+	dependenciesTable addColumn: (SpStringTableColumn new
+			 title: 'Repositories';
+			 evaluated: [ :model |
+				 model repositories ifEmpty: [ '' ] ifNotEmpty: [ :rep |
+						 rep size = 1
+							 ifTrue: [ rep keys first ]
+							 ifFalse: [ 'Conflicts' ] ] ];
+			 yourself).
+	dependenciesTable addColumn: (SpStringTableColumn new
+			 title: 'License';
+			 evaluated: [ :model |
+				 model repositories ifEmpty: [ '' ] ifNotEmpty: [ :rep |
+						 rep size = 1
+							 ifTrue: [ rep values first licenseShorter ]
+							 ifFalse: [ 'Conflicts' ] ] ];
 			 yourself).
 	copyButton := SpButtonPresenter new
 		              icon: (Smalltalk ui icons iconNamed: #smallCopy);
 		              help:
 			              'Copy in the clipboard the current Baseline fix.';
-						 action: [ self copyCurrent ];
+		              action: [ self copyCurrent ];
 		              yourself
 ]
