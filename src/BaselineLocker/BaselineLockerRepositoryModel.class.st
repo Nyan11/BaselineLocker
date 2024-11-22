@@ -101,6 +101,8 @@ BaselineLockerRepositoryModel >> repositoryName [
 BaselineLockerRepositoryModel >> updateLicense [
 
 	| licenseFile |
+	(self localFile isNil or: [self localFile exists not]) ifTrue: [ licenseShorter := license := 'Not found'.
+		^ self ].
 	licenseFile := self localFile files select: [ :each |
 		               each basename asLowercase beginsWith: 'license' ].
 	licenseFile ifEmpty: [
@@ -124,9 +126,8 @@ BaselineLockerRepositoryModel >> updateLocalFile [
 		                detect: [ :each |
 		                each name = expectedName ]
 		                ifNone: [
-			                self error:
-				                ('Did not find any repository named ''{1}'' in Iceberg (case insensitive). Alexandrie tests require it to access resources.'
-					                 format: { expectedName }) ].
+			                localFile := nil.
+			^ self ].
 
 	localFile := myRepository location
 ]
@@ -135,6 +136,8 @@ BaselineLockerRepositoryModel >> updateLocalFile [
 BaselineLockerRepositoryModel >> updateOwnerNameAndVersion [
 
 	| array repoAndVersion |
+	self repository ifEmpty: [ ^ self ].
+	(self repository size < 9 and: [self repository first: 6 = 'github']) ifTrue: [ ^ self ].
 	array := ($/ split: (self repository allButFirst: 9)) first: 2.
 	owner := array at: 1.
 	repoAndVersion := ($: split: (array at: 2)).
