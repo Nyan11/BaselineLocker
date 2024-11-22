@@ -8,7 +8,7 @@ Use this project to simply create fixed version of a project.
 ```st
 Metacello new
 	baseline: 'BaselineLocker';
-	repository: 'github://Nyan11/BaselineLocker:main/src';
+	repository: 'github://Nyan11/BaselineLocker:master/src';
 	load
 ```
 
