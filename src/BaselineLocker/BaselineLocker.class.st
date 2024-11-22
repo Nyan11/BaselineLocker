@@ -163,7 +163,7 @@ BaselineLocker >> copyCurrent [
 			| newRepoLine |
 			newRepoLine := '<t>spec repository: <1p>. "<2s> -> (<3s>)"<r>'
 				               expandMacrosWith: key
-				 				   with: (value licenceShorter)
+				 				   with: (value licenseShorter)
 				               with: (Character space join: value baselines)
 								  .
 			insideBloc := insideBloc , newRepoLine ].
@@ -223,70 +223,143 @@ BaselineLocker >> errorNotABaseline: aString [
 	errorLabel label: ('<1s> is not a baseline' expandMacrosWith: aString)
 ]
 
-{ #category : 'initialization' }
-BaselineLocker >> initializePresenters [
+{ #category : 'TOREMOVE' }
+BaselineLocker >> initialExtent [
 
-	super initializePresenters.
-	errorLabel := SpLabelPresenter new.
+	^ 600 @ 400.
+]
+
+{ #category : 'initialization' }
+BaselineLocker >> initializeBaselinesInput [.
+	
 	baselinesInput := SpTextInputFieldPresenter new
 		                  help:
 			                  'Input the baselines you want to tags separate by a ".".';
 		                  whenSubmitDo: [ :text |
 			                  self computeBaselineClassesFrom: text ];
 		                  yourself.
+]
 
-	dependenciesTable := SpTablePresenter new
-		                     contextMenu:
-			                     (SpMenuPresenter new addGroup: [ :group |
-					                      group addItem: [ :item |
-							                      item
-								                      name: 'Browse';
-								                      action: [
-									                      dependenciesTable selectedItem baseline
-										                      browse ] ].
-					                      group addItem: [ :item |
-						                      item
-							                      name: 'Inspect';
-							                      action: [
-								                      dependenciesTable selectedItem inspect ] ] ]);
-		                     yourself.
-	dependenciesTable addColumn: (SpStringTableColumn new
-			 title: '#';
-			 evaluated: [ :model | model sources size printString ];
-			 width: 16;
-			 yourself).
-	dependenciesTable addColumn: (SpStringTableColumn new
-			 title: 'Name';
-			 evaluated: [ :model | model baseline printString ];
-			 yourself).
-	dependenciesTable addColumn: (SpStringTableColumn new
-			 title: 'Loads';
-			 evaluated: [ :model |
-				 model loads ifEmpty: [ '' ] ifNotEmpty: [ :loads |
-						 loads size = 1
-							 ifTrue: [ loads keys first ]
-							 ifFalse: [ 'Conflicts' ] ] ];
-			 yourself).
-	dependenciesTable addColumn: (SpStringTableColumn new
-			 title: 'Repositories';
-			 evaluated: [ :model |
-				 model repositories ifEmpty: [ '' ] ifNotEmpty: [ :rep |
-						 rep size = 1
-							 ifTrue: [ rep keys first ]
-							 ifFalse: [ 'Conflicts' ] ] ];
-			 yourself).
-	dependenciesTable addColumn: (SpStringTableColumn new
-			 title: 'License';
-			 evaluated: [ :model |
-				 model repositories ifEmpty: [ '' ] ifNotEmpty: [ :rep |
-						 rep size = 1
-							 ifTrue: [ rep values first licenseShorter ]
-							 ifFalse: [ 'Conflicts' ] ] ];
-			 yourself).
+{ #category : 'initialization' }
+BaselineLocker >> initializeCopyButton [.
+	
 	copyButton := SpButtonPresenter new
 		              icon: (Smalltalk ui icons iconNamed: #smallCopy);
 		              help:
 			              'Copy in the clipboard the current Baseline fix.';
 		              action: [ self copyCurrent ];
 		              yourself
+]
+
+{ #category : 'initialization' }
+BaselineLocker >> initializeDependenciesTable [
+
+	| refNumberColumn nameColumn loadsColumn repositoryColumn licenseColumn |
+	dependenciesTable := SpTablePresenter new
+		                     beResizable;
+		                     contextMenu:
+			                     (SpMenuPresenter new addGroup: [ :group |
+					                      group addItem: [ :item |
+							                      item
+								                      name: 'Browse';
+								                      icon:
+									                      (Smalltalk ui icons iconNamed:
+											                       #nautilus);
+								                      action: [
+									                      dependenciesTable selectedItem baseline
+										                      browse ] ].
+					                      group
+						                      addItem: [ :item |
+							                      item
+								                      name: 'Inspect';
+								                      icon:
+									                      (Smalltalk ui icons iconNamed:
+											                       #smallInspectIt);
+								                      action: [
+									                      dependenciesTable selectedItem inspect ] ];
+						                      addItem: [ :item |
+							                      item
+								                      name: 'Inspect License';
+								                      icon:
+									                      (Smalltalk ui icons iconNamed: #history);
+								                      action: [
+									                      dependenciesTable selectedItem
+										                      repositories values first license
+										                      inspect ] ] ]);
+		                     yourself.
+	refNumberColumn := SpStringTableColumn new
+		                   title: '#';
+		                   evaluated: [ :model |
+			                   model sources size printString ];
+		                   width: 16;
+		                   yourself.
+	nameColumn := SpStringTableColumn new
+		              title: 'Name';
+		              evaluated: [ :model | model baseline printString ];
+		              beExpandable;
+		              yourself.
+	loadsColumn := SpStringTableColumn new
+		               title: 'Loads';
+		               evaluated: [ :model |
+			               model loads ifEmpty: [ '' ] ifNotEmpty: [ :loads |
+					               loads size = 1
+						               ifTrue: [ loads keys first ]
+						               ifFalse: [ 'Conflicts' ] ] ];
+		               beExpandable;
+		               width: 120;
+		               yourself.
+	repositoryColumn := SpStringTableColumn new
+		                    title: 'Repositories';
+		                    evaluated: [ :model |
+			                    model repositories
+				                    ifEmpty: [ '' ]
+				                    ifNotEmpty: [ :rep |
+					                    rep size = 1
+						                    ifTrue: [ rep keys first ]
+						                    ifFalse: [ 'Conflicts' ] ] ];
+		                    beExpandable;
+		                    yourself.
+	licenseColumn := SpStringTableColumn new
+		                 title: 'License in Iceberg';
+		                 evaluated: [ :model |
+			                 model repositories
+				                 ifEmpty: [ '' ]
+				                 ifNotEmpty: [ :rep |
+					                 rep values first licenseShorter ] ];
+		                 beExpandable;
+		                 width: 120;
+		                 yourself.
+	dependenciesTable addColumns: {
+			refNumberColumn.
+			nameColumn.
+			loadsColumn.
+			repositoryColumn.
+			licenseColumn }
+]
+
+{ #category : 'initialization' }
+BaselineLocker >> initializeErrorLabel [.
+
+	errorLabel := SpLabelPresenter new.
+	
+]
+
+{ #category : 'initialization' }
+BaselineLocker >> initializePresenters [
+
+	super initializePresenters.
+	self initializeErrorLabel.
+	self initializeBaselinesInput.
+	self initializeDependenciesTable.
+	self initializeCopyButton.
+	
+]
+
+{ #category : 'initialization' }
+BaselineLocker >> initializeWindow: aWindowPresenter [
+
+	super initializeWindow: aWindowPresenter.
+	aWindowPresenter
+		title: 'Baseline Locker';
+		initialExtent: self initialExtent
 ]
