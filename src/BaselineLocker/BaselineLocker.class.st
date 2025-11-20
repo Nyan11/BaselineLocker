@@ -4,12 +4,101 @@ Class {
 	#instVars : [
 		'baselinesInput',
 		'dependenciesTable',
-		'copyButton',
-		'errorLabel'
+		'errorLabel',
+		'copyBaselineButton',
+		'copyMarkdownButton'
 	],
 	#category : 'BaselineLocker',
 	#package : 'BaselineLocker'
 }
+
+{ #category : 'baselines' }
+BaselineLocker class >> baselineModelScriptForCollectionOfBaselines: aCollectionOfBaselines [
+
+	| foundBaselines count todos dependenciesModels dependenciesClasses orderedBaselines allBaselineToAdd dependenciesProjects modelDictionary maxBaselines |
+	maxBaselines := 500.
+	foundBaselines := Dictionary new.
+	modelDictionary := Dictionary new.
+	count := 1.
+
+	aCollectionOfBaselines do: [ :bl |
+			todos := Set with: bl.
+			[ todos isNotEmpty and: [ count < maxBaselines ] ] whileTrue: [
+					| target |
+					target := todos anyOne.
+					count := count + 1.
+					todos remove: target.
+					(foundBaselines includesKey: target) ifFalse: [
+							dependenciesProjects := target version projects select: [
+									                        :dependencyProject |
+									                        | baselineClassName |
+									                        baselineClassName := dependencyProject
+										                                             constructClassName.
+									                        baselineClassName
+										                        ifNil: [ false ]
+										                        ifNotNil: [ :string |
+										                        Smalltalk globals includesKey:
+											                        string asSymbol ] ].
+							dependenciesModels := dependenciesProjects collect: [
+									                      :dependency |
+									                      | model |
+									                      model := BaselineLockerDiffModel new.
+									                      model addSource: target.
+									                      model baseline:
+										                      (Smalltalk globals at:
+											                       dependency constructClassName
+												                       asSymbol).
+									                      model
+										                      addRepositories:
+										                      dependency repositories list first
+											                      name
+										                      fromSource: target.
+									                      model
+										                      addLoads: dependency loads
+										                      fromSource: target ].
+							dependenciesClasses := (dependenciesModels collect: [ :each |
+								                        each baseline ]) asSet.
+							dependenciesModels do: [ :each |
+									modelDictionary
+										at: each baseline
+										ifPresent: [ :model |
+												model addSource: target.
+												each repositories keysDo: [ :repo |
+													model addRepositories: repo fromSource: target ].
+												each loads keysDo: [ :repo |
+													model addLoads: repo fromSource: target ] ]
+										ifAbsentPut: each ].
+							foundBaselines
+								at: target
+								put: dependenciesClasses asOrderedCollection.
+							todos addAll: dependenciesClasses ] ] ].
+
+	count >= maxBaselines ifTrue: [ Error new signal ].
+
+	orderedBaselines := OrderedCollection new.
+	allBaselineToAdd := foundBaselines copy.
+
+	count := 1.
+	[ allBaselineToAdd isNotEmpty and: [ count < maxBaselines ] ]
+		whileTrue: [
+				| leaves |
+				count := count + 1.
+				leaves := foundBaselines select: [ :each | each value isEmpty ].
+				leaves keysDo: [ :leaf |
+						allBaselineToAdd valuesDo: [ :each |
+							each remove: leaf ifAbsent: [ ] ].
+						allBaselineToAdd removeKey: leaf ifAbsent: [ ] ].
+				orderedBaselines addAll:
+					(leaves keys reject: [ :each | orderedBaselines includes: each ]) ].
+
+	count >= maxBaselines ifTrue: [ Error new signal ].
+
+	^ orderedBaselines collect: [ :each |
+			  modelDictionary at: each ifAbsentPut: [
+					  BaselineLockerDiffModel new
+						  baseline: each;
+						  yourself ] ]
+]
 
 { #category : 'private' }
 BaselineLocker class >> launch [
@@ -42,86 +131,14 @@ BaselineLocker >> computeBaselineClassesFrom: text [
 { #category : 'initialization' }
 BaselineLocker >> computeDependenciesFrom: aCollectionOfBaselines [
 
-	| foundBaselines count todos dependenciesModels dependenciesClasses orderedBaselines allBaselineToAdd dependenciesProjects modelDictionary maxBaselines |
-	maxBaselines := 500.
-	foundBaselines := Dictionary new.
-	modelDictionary := Dictionary new.
-	count := 1.
-
-	aCollectionOfBaselines do: [ :bl |
-		todos := Set with: bl.
-		[ todos isNotEmpty and: [ count < maxBaselines ] ] whileTrue: [
-			| target |
-			target := todos anyOne.
-			count := count + 1.
-			todos remove: target.
-			(foundBaselines includesKey: target) ifFalse: [
-				dependenciesProjects := target version projects select: [
-					                        :dependencyProject |
-					                        | baselineClassName |
-					                        baselineClassName := dependencyProject
-						                                             constructClassName.
-					                        baselineClassName
-						                        ifNil: [ false ]
-						                        ifNotNil: [ :string |
-						                        Smalltalk globals includesKey:
-							                        string asSymbol ] ].
-				dependenciesModels := dependenciesProjects collect: [ :dependency |
-					                      | model |
-					                      model := BaselineLockerDiffModel new.
-					                      model addSource: target.
-					                      model baseline:
-						                      (Smalltalk globals at:
-							                       dependency constructClassName asSymbol).
-					                      model
-						                      addRepositories:
-						                      dependency repositories list first name
-						                      fromSource: target.
-					                      model
-						                      addLoads: dependency loads
-						                      fromSource: target ].
-				dependenciesClasses := (dependenciesModels collect: [ :each |
-					                        each baseline ]) asSet.
-				dependenciesModels do: [ :each |
-					modelDictionary
-						at: each baseline
-						ifPresent: [ :model |
-							model addSource: target.
-							each repositories keys do: [ :repo |
-								model addRepositories: repo fromSource: target ].
-							each loads keys do: [ :repo |
-								model addLoads: repo fromSource: target ] ]
-						ifAbsentPut: each ].
-				foundBaselines
-					at: target
-					put: dependenciesClasses asOrderedCollection.
-				todos addAll: dependenciesClasses ] ] ].
-
-	count >= maxBaselines ifTrue: [ ^ self errorInDependencies ].
-
-	orderedBaselines := OrderedCollection new.
-	allBaselineToAdd := foundBaselines copy.
-
-	count := 1.
-	[ allBaselineToAdd isNotEmpty and: [ count < maxBaselines ] ]
-		whileTrue: [
-			| leaves |
-			count := count + 1.
-			leaves := foundBaselines select: [ :each | each value isEmpty ].
-			leaves keysDo: [ :leaf |
-				allBaselineToAdd valuesDo: [ :each |
-					each remove: leaf ifAbsent: [  ] ].
-				allBaselineToAdd removeKey: leaf ifAbsent: [  ] ].
-			orderedBaselines addAll:
-				(leaves keys reject: [ :each | orderedBaselines includes: each ]) ].
-
-	count >= maxBaselines ifTrue: [ ^ self errorInDependencies ].
-
-	self dependencies: (orderedBaselines collect: [ :each |
-			 modelDictionary at: each ifAbsentPut: [
-				 BaselineLockerDiffModel new
-					 baseline: each;
-					 yourself ] ])
+	| dependencies |
+	dependencies := [
+		                self class
+			                baselineModelScriptForCollectionOfBaselines:
+			                aCollectionOfBaselines ]
+		                on: Error
+		                do: [ ^ self errorInDependencies ].
+	self dependencies: dependencies
 ]
 
 { #category : 'as yet unclassified' }
@@ -184,10 +201,11 @@ BaselineLocker >> defaultLayout [
 
 	^ SpBoxLayout newVertical
 		  spacing: 4;
+		  add: baselinesInput expand: false;
 		  add: (SpBoxLayout newHorizontal
 				   spacing: 4;
-				   add: baselinesInput expand: true;
-				   add: copyButton expand: false;
+				   add: copyBaselineButton expand: true;
+				   add: copyMarkdownButton expand: true;
 				   yourself)
 		  expand: false;
 		  add: errorLabel expand: false;
@@ -241,14 +259,31 @@ BaselineLocker >> initializeBaselinesInput [.
 ]
 
 { #category : 'initialization' }
-BaselineLocker >> initializeCopyButton [.
-	
-	copyButton := SpButtonPresenter new
-		              icon: (Smalltalk ui icons iconNamed: #smallCopy);
-		              help:
-			              'Copy in the clipboard the current Baseline fix.';
-		              action: [ self copyCurrent ];
-		              yourself
+BaselineLocker >> initializeCopyButton [
+
+	copyBaselineButton := SpButtonPresenter new
+		                      icon:
+			                      (Smalltalk ui icons iconNamed: #smallCopy);
+		                      label: 'as Pharo Code';
+		                      help:
+			                      'Copy in the clipboard the current Baseline fix.';
+		                      action: [
+				                      self copyCurrent.
+				                      self inform: 'Copy code to clipboard' ];
+		                      yourself.
+	copyMarkdownButton := SpButtonPresenter new
+		                      icon:
+			                      (Smalltalk ui icons iconNamed: #smallCopy);
+		                      label: 'as Markdown Code';
+		                      help:
+			                      'Copy in the clipboard the current Baseline fix.';
+		                      action: [
+				                      Clipboard clipboardText:
+						                      ((dependenciesTable items collect:
+								                        #prettyPrintInMarkdown) reduce: [ :a :b |
+								                       a , b ]).
+				                      self inform: 'Copy markdow to clipboard' ];
+		                      yourself
 ]
 
 { #category : 'initialization' }

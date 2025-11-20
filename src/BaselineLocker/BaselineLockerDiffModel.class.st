@@ -62,6 +62,21 @@ BaselineLockerDiffModel >> loads [
 	^ loads
 ]
 
+{ #category : 'as yet unclassified' }
+BaselineLockerDiffModel >> prettyPrintInMarkdown [
+
+	| allPossibleStrings accumulator |
+	self repositories ifEmpty: [ ^ '' ].
+	allPossibleStrings := (self repositories values collect:
+		                       #prettyPrintInMarkdown) asOrderedCollection
+		                      removeDuplicates.
+	allPossibleStrings size = 1 ifTrue: [ ^ allPossibleStrings first ].
+	accumulator := ''.
+	allPossibleStrings do: [ :each | accumulator := accumulator , each ].
+	^ '============<r>Choose one between all:<r><r><1s><r>============<r>'
+		  expandMacrosWith: accumulator
+]
+
 { #category : 'accessing' }
 BaselineLockerDiffModel >> repositories [
 

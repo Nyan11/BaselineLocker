@@ -77,6 +77,27 @@ BaselineLockerRepositoryModel >> localFile: anObject [
 	localFile := anObject
 ]
 
+{ #category : 'as yet unclassified' }
+BaselineLockerRepositoryModel >> prettyPrintInMarkdown [
+
+	| macrosString url |
+	macrosString := '- **[<1s>](<2s>)<r>  - licences: <3s><r>  - repository: <2s><r><r>'.
+	url := 'I do not understand this: { <1s> }' expandMacrosWith:
+		       self repository.
+	(self repository beginsWith: 'github') ifTrue: [
+			url := 'https://github.com/<1s>' expandMacrosWith:
+				       ((':' split: self repository) second allButFirst: 2) ].
+	(self repository beginsWith: 'gitlab') ifTrue: [
+			| temp |
+			temp := ':' split: self repository.
+			url := 'https:' , temp second , '/' , temp third ].
+	(url endsWith: '/src') ifTrue: [ url := url allButLast: 4 ].
+	^ macrosString
+		  expandMacrosWith: self repositoryName
+		  with: url
+		  with: self licenseShorter
+]
+
 { #category : 'accessing' }
 BaselineLockerRepositoryModel >> repository [
 
