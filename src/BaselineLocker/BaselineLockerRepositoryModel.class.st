@@ -81,7 +81,7 @@ BaselineLockerRepositoryModel >> localFile: anObject [
 BaselineLockerRepositoryModel >> prettyPrintInMarkdown [
 
 	| macrosString url |
-	macrosString := '- **[<1s>](<2s>)<r>  - licences: <3s><r>  - repository: <2s><r><r>'.
+	macrosString := '- **[<1s>](<2s>)**<r>  - licences: <3s><r>  - repository: <2s><r><r>'.
 	url := 'I do not understand this: { <1s> }' expandMacrosWith:
 		       self repository.
 	(self repository beginsWith: 'github') ifTrue: [
