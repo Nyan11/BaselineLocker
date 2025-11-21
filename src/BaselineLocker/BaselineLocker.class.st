@@ -146,56 +146,6 @@ BaselineLocker >> computeLicences [
 	dependenciesTable items do: [ :each | each repositories values do: #updateLicence ].
 ]
 
-{ #category : 'copying' }
-BaselineLocker >> copyCurrent [
-
-	| text |
-	text := ''.
-	dependenciesTable items do: [ :each |
-		| configName insideBloc |
-		configName := each baseline name allButFirst: 10.
-		insideBloc := ''.
-		each loads size > 1 ifTrue: [
-			insideBloc := insideBloc
-			              ,
-				              '<t>self flag: #CHOOSE. "Choose one of the loads config"<r>'
-					              expandMacros ].
-		each loads keysAndValuesDo: [ :key :value |
-			| newLoadLine |
-			key
-				ifNil: [
-					newLoadLine := '<t>"loads default" "<1s>"<r>' expandMacrosWith:
-						               (Character space join: value) ]
-				ifNotNil: [
-					newLoadLine := '<t>spec loads: <1p>. "<2s>"<r>'
-						               expandMacrosWith: key
-						               with: (Character space join: value).
-					insideBloc := insideBloc , newLoadLine ] ].
-		each repositories size > 1 ifTrue: [
-			insideBloc := insideBloc
-			              ,
-				              '<r><t>self flag: #CHOOSE. "Choose one of the repositories config"<r>'
-					              expandMacros ].
-		each repositories keysAndValuesDo: [ :key :value |
-			| newRepoLine |
-			newRepoLine := '<t>spec repository: <1p>. "<2s> -> (<3s>)"<r>'
-				               expandMacrosWith: key
-				 				   with: (value licenseShorter)
-				               with: (Character space join: value baselines)
-								  .
-			insideBloc := insideBloc , newRepoLine ].
-		each sources isEmpty ifTrue: [
-			text := text
-			        ,
-				        'self flag: #MANUALLY. "No config found. Either do mannually or remove"<r>'
-					        expandMacros ].
-		text := text , 'spec baseline: <1p> with: [<r><2s>].<r><r>'
-			        expandMacrosWith: configName
-			        with: insideBloc ].
-
-	Clipboard clipboardText: text
-]
-
 { #category : 'layout' }
 BaselineLocker >> defaultLayout [
 
@@ -268,7 +218,11 @@ BaselineLocker >> initializeCopyButton [
 		                      help:
 			                      'Copy in the clipboard the current Baseline fix.';
 		                      action: [
-				                      self copyCurrent.
+				                      Clipboard clipboardText:
+						                      ((dependenciesTable items collect:
+								                        #prettyPrintInBaselineCode) reduce: [
+								                       :a
+								                       :b | a , b ]).
 				                      self inform: 'Copy code to clipboard' ];
 		                      yourself.
 	copyMarkdownButton := SpButtonPresenter new
